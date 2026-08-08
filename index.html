@@ -15,7 +15,7 @@
       max-width: 800px;
       margin: 0 auto;
       background: white;
-      padding: 15px;
+      padding: 20px;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
@@ -27,50 +27,52 @@
     .controls {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 20px;
     }
     input[type="text"] {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box; /* чтобы padding не ломал ширину */
+      border-radius: 6px;
+      box-sizing: border-box;
       font-size: 1rem;
     }
     button {
-      padding: 10px 16px;
-      background: #007bff;
-      color: white;
+      padding: 12px 18px;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 1rem;
+      transition: background 0.2s;
     }
-    button:hover { background: #0056b3; }
-    button.secondary {
-      background: #6c757d;
+    /* Главная кнопка генерации — яркий цвет */
+    .btn-generate {
+      background: #28a745; /* зелёный, чтобы отличаться */
+      color: white;
     }
-    button.secondary:hover {
-      background: #545c64;
+    .btn-generate:hover {
+      background: #218838;
     }
+
     .mode-buttons {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 8px;
-      margin-bottom: 15px;
+      margin-bottom: 18px;
     }
     .mode-buttons button {
       background: #e9ecef;
       color: #333;
       flex: 1 1 auto;
-      min-width: 130px; /* чтобы на телефоне не было слишком мелко */
+      min-width: 130px;
     }
     .mode-buttons button.active {
       background: #007bff;
       color: white;
     }
+
     #result {
       text-align: center;
       margin-top: 20px;
@@ -80,6 +82,7 @@
       height: auto;
       display: block;
       margin: 10px auto;
+      border-radius: 4px;
     }
     canvas {
       max-width: 100%;
@@ -87,34 +90,50 @@
       display: block;
       margin: 10px auto;
     }
+
     .upload-section {
       display: none;
-      margin-bottom: 15px;
+      margin-bottom: 18px;
       text-align: center;
     }
-    .upload-section label {
-      cursor: pointer;
-      display: inline-block;
-      padding: 10px 20px;
-      background: #e9ecef;
+    .upload-preview {
+      margin-top: 10px;
+      max-height: 80px;
+      border: 1px dashed #ccc;
+      padding: 8px;
       border-radius: 4px;
-      font-weight: 500;
+      display: none; /* скрыт по умолчанию */
     }
-    .upload-section input[type="file"] {
+    .upload-label {
+      display: inline-block;
+      padding: 12px 20px;
+      background: #e9ecef;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .upload-input {
       display: none;
     }
+
     .actions {
       margin-top: 15px;
       text-align: center;
     }
+    .btn-download {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-download:hover {
+      background: #545c64;
+    }
 
-    /* Адаптив для очень маленьких экранов */
     @media (max-width: 480px) {
       .mode-buttons button {
-        min-width: 100%; /* на узких экранах кнопки на всю ширину */
+        min-width: 100%;
       }
       input[type="text"] {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
       }
     }
   </style>
@@ -125,7 +144,8 @@
 
     <div class="controls">
       <input type="text" id="inputText" placeholder="Введите текст или ссылку" value="https://example.com" />
-      <button onclick="generate()">Сгенерировать</button>
+      <!-- Кнопка другого цвета -->
+      <button class="btn-generate" onclick="generate()">Сгенерировать</button>
     </div>
 
     <div class="mode-buttons">
@@ -134,17 +154,19 @@
       <button id="btnMode3" onclick="setMode(3)">QR с картинкой</button>
     </div>
 
+    <!-- Секция загрузки с превью -->
     <div id="uploadSection" class="upload-section">
-      <label>
-        Загрузите картинку для центра QR
-        <input type="file" id="imageInput" accept="image/*" />
+      <label class="upload-label">
+        Загрузить картинку для центра QR
+        <input type="file" id="imageInput" class="upload-input" accept="image/*" />
       </label>
+      <div id="uploadPreview" class="upload-preview"></div>
     </div>
 
     <div id="result"></div>
 
     <div class="actions">
-      <button class="secondary" onclick="downloadResult()">Скачать результат (PNG)</button>
+      <button class="btn-download" onclick="downloadResult()">Скачать результат (PNG)</button>
     </div>
   </div>
 
@@ -154,7 +176,7 @@
   <script>
     let currentMode = 1;
     let userImage = null;
-    let lastResultCanvas = null; // храним последний canvas с результатом для скачивания
+    let lastResultCanvas = null;
 
     function setMode(mode) {
       currentMode = mode;
@@ -164,22 +186,33 @@
       if (mode === 3) document.getElementById('btnMode3').classList.add('active');
 
       const uploadSection = document.getElementById('uploadSection');
+      const preview = document.getElementById('uploadPreview');
       if (mode === 3) {
         uploadSection.style.display = 'block';
       } else {
         uploadSection.style.display = 'none';
         userImage = null;
+        if (preview) preview.style.display = 'none';
       }
       document.getElementById('result').innerHTML = '';
       lastResultCanvas = null;
     }
 
+    // Обработка загрузки файла и показ превью
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
+
       const reader = new FileReader();
       reader.onload = function(event) {
         userImage = event.target.result; // data URL
+        const preview = document.getElementById('uploadPreview');
+        preview.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = userImage;
+        img.style.maxWidth = '100%';
+        preview.appendChild(img);
+        preview.style.display = 'block'; // показываем превью
       };
       reader.readAsDataURL(file);
     });
@@ -204,7 +237,7 @@
           width: 256,
           height: 256
         });
-        // Сохраняем canvas из QRCode, если он появится
+
         setTimeout(() => {
           const img = container.querySelector('img');
           if (img) {
@@ -221,7 +254,6 @@
         // Стандартный штрихкод
         const canvas = document.createElement('canvas');
         canvas.id = 'barcodeCanvas';
-        // Подбираем размеры, которые хорошо смотрятся и на ПК, и на телефоне
         canvas.width = 300;
         canvas.height = 120;
         document.getElementById('result').appendChild(canvas);
@@ -244,7 +276,7 @@
         const ctx = canvas.getContext('2d');
 
         const qrContainer = document.createElement('div');
-        qrContainer.style.display = 'none'; // скрываем временный контейнер
+        qrContainer.style.display = 'none';
         document.body.appendChild(qrContainer);
         new QRCode(qrContainer, {
           text: text,
@@ -275,7 +307,7 @@
             qrContainer.remove();
           };
           img.onerror = () => {
-            // Если картинки нет — показываем QR без вставки
+            // Если картинка не загрузилась — показываем QR без вставки
             const resultImg = document.createElement('img');
             resultImg.src = canvas.toDataURL('image/png');
             document.getElementById('result').appendChild(resultImg);
@@ -286,7 +318,7 @@
           if (userImage) {
             img.src = userImage;
           } else {
-            // Заглушка, если забыли загрузить
+            // Заглушка, если не загрузили фото
             img.src = 'https://via.placeholder.com/80';
           }
         }, 100);
@@ -304,7 +336,6 @@
       link.click();
     }
 
-    // Инициализация
     setMode(1);
   </script>
 </body>
