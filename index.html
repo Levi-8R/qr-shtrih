@@ -46,7 +46,6 @@
       font-size: 1rem;
       transition: background 0.2s;
     }
-    /* Главная кнопка генерации — зелёный цвет */
     .btn-generate {
       background: #28a745;
       color: white;
@@ -124,7 +123,7 @@
       border-radius: 4px;
       font-size: 0.9rem;
       white-space: nowrap;
-      display: none; /* скрыт по умолчанию */
+      display: none;
     }
 
     .actions {
@@ -169,7 +168,6 @@
       <button id="btnMode3" onclick="setMode(3)">QR с картинкой</button>
     </div>
 
-    <!-- Секция загрузки: теперь статус справа от кнопки -->
     <div id="uploadSection" class="upload-section">
       <div class="upload-wrapper">
         <label class="upload-label">
@@ -187,7 +185,6 @@
     </div>
   </div>
 
-  <!-- Библиотеки -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <script>
@@ -217,17 +214,16 @@
       lastResultCanvas = null;
     }
 
-    // Обработка загрузки файла и показ статуса
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(event) {
-        userImage = event.target.result; // data URL
+        userImage = event.target.result;
         const status = document.getElementById('uploadStatus');
         status.textContent = 'Загружено: ' + file.name;
-        status.style.display = 'block'; // показываем статус
+        status.style.display = 'block';
       };
       reader.readAsDataURL(file);
     });
@@ -243,7 +239,6 @@
       lastResultCanvas = null;
 
       if (currentMode === 1) {
-        // Обычный QR
         const container = document.createElement('div');
         container.id = 'qr-container-1';
         document.getElementById('result').appendChild(container);
@@ -263,10 +258,9 @@
             ctx.drawImage(img, 0, 0);
             lastResultCanvas = canvas;
           }
-        }, 100);
+        }, 150);
       } 
       else if (currentMode === 2) {
-        // Стандартный штрихкод
         const canvas = document.createElement('canvas');
         canvas.id = 'barcodeCanvas';
         canvas.width = 300;
@@ -284,15 +278,16 @@
         lastResultCanvas = canvas;
       } 
       else if (currentMode === 3) {
-        // QR с пользовательской картинкой в центре
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 256;
         const ctx = canvas.getContext('2d');
 
         const qrContainer = document.createElement('div');
-        qrContainer.style.display = 'none';
+        qrContainer.style.position = 'absolute';
+        qrContainer.style.left = '-9999px';
         document.body.appendChild(qrContainer);
+        
         new QRCode(qrContainer, {
           text: text,
           width: 256,
@@ -313,6 +308,7 @@
           const y = (256 - iconSize) / 2;
 
           const img = new Image();
+          img.crossOrigin = "Anonymous";
           img.onload = () => {
             ctx.drawImage(img, x, y, iconSize, iconSize);
             const resultImg = document.createElement('img');
@@ -322,7 +318,6 @@
             qrContainer.remove();
           };
           img.onerror = () => {
-            // Если картинка не загрузилась — показываем QR без вставки
             const resultImg = document.createElement('img');
             resultImg.src = canvas.toDataURL('image/png');
             document.getElementById('result').appendChild(resultImg);
@@ -333,10 +328,9 @@
           if (userImage) {
             img.src = userImage;
           } else {
-            // Заглушка, если не загрузили фото
             img.src = 'https://via.placeholder.com/80';
           }
-        }, 100);
+        }, 150);
       }
     }
 
