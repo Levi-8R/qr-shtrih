@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Генератор QR и штрихкодов</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { text-align: center; }
+    .controls { margin-bottom: 20px; }
+    input[type="text"] {
+      width: 70%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    .mode-buttons { margin-bottom: 15px; }
+    .mode-buttons button {
+      background: #e9ecef;
+      color: #333;
+      margin-right: 8px;
+    }
+    .mode-buttons button.active {
+      background: #007bff;
+      color: white;
+    }
+    #result {
+      text-align: center;
+      margin-top: 20px;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 10px auto;
+    }
+    .upload-section { display: none; margin-bottom: 15px; }
+    .upload-section label { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Генератор QR и штрихкодов</h1>
+
+    <div class="controls">
+      <input type="text" id="inputText" placeholder="Введите текст или ссылку" value="https://example.com" />
+      <button onclick="generate()">Сгенерировать</button>
+    </div>
+
+    <div class="mode-buttons">
+      <button id="btnMode1" class="active" onclick="setMode(1)">Обычный QR</button>
+      <button id="btnMode2" onclick="setMode(2)">Штрихкод (стандартный)</button>
+      <button id="btnMode3" onclick="setMode(3)">QR с загрузкой картинки</button>
+    </div>
+
+    <div id="uploadSection" class="upload-section">
+      <label>Загрузите картинку для центра QR:</label>
+      <input type="file" id="imageInput" accept="image/*" />
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <!-- Библиотеки -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script>
+    let currentMode = 1;
+    let userImage = null;
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-buttons button').forEach(b => b.classList.remove('active'));
+      if (mode === 1) document.getElementById('btnMode1').classList.add('active');
+      if (mode === 2) document.getElementById('btnMode2').classList.add('active');
+      if (mode === 3) document.getElementById('btnMode3').classList.add('active');
+
+      const uploadSection = document.getElementById('uploadSection');
+      if (mode === 3) {
+        uploadSection.style.display = 'block';
+      } else {
+        uploadSection.style.display = 'none';
+        userImage = null;
+      }
+      document.getElementById('result').innerHTML = '';
+    }
+
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        userImage = event.target.result; // data URL
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function generate() {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) {
+        alert('Введите текст или ссылку');
+        return;
+      }
+
+      document.getElementById('result').innerHTML = '';
+
+      if (currentMode === 1) {
+        // Обычный QR
+        const container = document.createElement('div');
+        container.id = 'qr-container-1';
+        document.getElementById('result').appendChild(container);
+        new QRCode(container, {
+          text: text,
+          width: 256,
+          height: 256
+        });
+      } 
+      else if (currentMode === 2) {
+        // Стандартный штрихкод
+        const canvas = document.createElement('canvas');
+        canvas.id = 'barcodeCanvas';
+        document.getElementById('result').appendChild(canvas);
+
+        JsBarcode(canvas, text, {
+          format: "CODE128",
+          displayValue: true,
+          fontSize: 16,
+          textAlign: "center",
+          fontOptions: "bold"
+        });
+      } 
+      else if (currentMode === 3) {
+        // QR с пользовательской картинкой в центре
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        const qrContainer = document.createElement('div');
+        qrContainer.style.display = 'none'; // скрываем временный контейнер
+        document.body.appendChild(qrContainer);
+        new QRCode(qrContainer, {
+          text: text,
+          width: 256,
+          height: 256
+        });
+
+        setTimeout(() => {
+          const qrImg = qrContainer.querySelector('img');
+          if (!qrImg) {
+            alert('Ошибка генерации QR');
+            qrContainer.remove();
+            return;
+          }
+          ctx.drawImage(qrImg, 0, 0, 256, 256);
+
+          const iconSize = 80;
+          const x = (256 - iconSize) / 2;
+          const y = (256 - iconSize) / 2;
+
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, x, y, iconSize, iconSize);
+            const dataUrl = canvas.toDataURL('image/png');
+
+            const resultImg = document.createElement('img');
+            resultImg.src = dataUrl;
+            document.getElementById('result').appendChild(resultImg);
+
+            qrContainer.remove();
+          };
+          img.onerror = () => {
+            alert('Не удалось загрузить изображение');
+            qrContainer.remove();
+          };
+
+          if (userImage) {
+            img.src = userImage;
+          } else {
+            // Если картинки нет — показываем QR без вставки
+            const dataUrl = canvas.toDataURL('image/png');
+            const resultImg = document.createElement('img');
+            resultImg.src = dataUrl;
+            document.getElementById('result').appendChild(resultImg);
+            qrContainer.remove();
+          }
+        }, 100);
+      }
+    }
+
+    // Инициализация
+    setMode(1);
+  </script>
+</body>
+</html>
