@@ -2,36 +2,50 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Генератор QR и штрихкодов</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f0f2f5;
-      padding: 20px;
+      padding: 10px;
+      margin: 0;
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
       background: white;
-      padding: 20px;
+      padding: 15px;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    h1 { text-align: center; }
-    .controls { margin-bottom: 20px; }
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
     input[type="text"] {
-      width: 70%;
-      padding: 8px;
+      width: 100%;
+      padding: 10px;
       border: 1px solid #ccc;
       border-radius: 4px;
+      box-sizing: border-box; /* чтобы padding не ломал ширину */
+      font-size: 1rem;
     }
     button {
-      padding: 8px 16px;
+      padding: 10px 16px;
       background: #007bff;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      font-size: 1rem;
     }
     button:hover { background: #0056b3; }
     button.secondary {
@@ -40,11 +54,18 @@
     button.secondary:hover {
       background: #545c64;
     }
-    .mode-buttons { margin-bottom: 15px; }
+    .mode-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
     .mode-buttons button {
       background: #e9ecef;
       color: #333;
-      margin-right: 8px;
+      flex: 1 1 auto;
+      min-width: 130px; /* чтобы на телефоне не было слишком мелко */
     }
     .mode-buttons button.active {
       background: #007bff;
@@ -60,9 +81,42 @@
       display: block;
       margin: 10px auto;
     }
-    .upload-section { display: none; margin-bottom: 15px; }
-    .upload-section label { cursor: pointer; }
-    .actions { margin-top: 15px; text-align: center; }
+    canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 10px auto;
+    }
+    .upload-section {
+      display: none;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .upload-section label {
+      cursor: pointer;
+      display: inline-block;
+      padding: 10px 20px;
+      background: #e9ecef;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .upload-section input[type="file"] {
+      display: none;
+    }
+    .actions {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    /* Адаптив для очень маленьких экранов */
+    @media (max-width: 480px) {
+      .mode-buttons button {
+        min-width: 100%; /* на узких экранах кнопки на всю ширину */
+      }
+      input[type="text"] {
+        font-size: 0.9rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -76,13 +130,15 @@
 
     <div class="mode-buttons">
       <button id="btnMode1" class="active" onclick="setMode(1)">Обычный QR</button>
-      <button id="btnMode2" onclick="setMode(2)">Штрихкод (стандартный)</button>
-      <button id="btnMode3" onclick="setMode(3)">QR с загрузкой картинки</button>
+      <button id="btnMode2" onclick="setMode(2)">Штрихкод</button>
+      <button id="btnMode3" onclick="setMode(3)">QR с картинкой</button>
     </div>
 
     <div id="uploadSection" class="upload-section">
-      <label>Загрузите картинку для центра QR:</label>
-      <input type="file" id="imageInput" accept="image/*" />
+      <label>
+        Загрузите картинку для центра QR
+        <input type="file" id="imageInput" accept="image/*" />
+      </label>
     </div>
 
     <div id="result"></div>
@@ -165,6 +221,7 @@
         // Стандартный штрихкод
         const canvas = document.createElement('canvas');
         canvas.id = 'barcodeCanvas';
+        // Подбираем размеры, которые хорошо смотрятся и на ПК, и на телефоне
         canvas.width = 300;
         canvas.height = 120;
         document.getElementById('result').appendChild(canvas);
@@ -172,7 +229,7 @@
         JsBarcode(canvas, text, {
           format: "CODE128",
           displayValue: true,
-          fontSize: 16,
+          fontSize: 14,
           textAlign: "center",
           fontOptions: "bold"
         });
