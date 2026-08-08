@@ -178,7 +178,7 @@
       </div>
     </div>
 
-    <!-- Временный контейнер для рендера QR — вне видимой области, но в DOM -->
+    <!-- Контейнер для рендера QR вне видимой области -->
     <div id="qrTempContainer" style="position:absolute; left:-9999px;"></div>
 
     <div id="result"></div>
@@ -273,6 +273,7 @@
         const tempContainer = document.getElementById('qrTempContainer');
         tempContainer.innerHTML = '';
         
+        // Создаем QR во временном контейнере
         new QRCode(tempContainer, {
           text: text,
           width: 256,
@@ -284,6 +285,7 @@
         canvas.height = 256;
         const ctx = canvas.getContext('2d');
 
+        // Ждем, пока картинка QR реально отрендерится (не просто загрузится, а будет иметь размеры)
         const checkQR = setInterval(() => {
           const img = tempContainer.querySelector('img');
           if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -298,16 +300,10 @@
             overlay.crossOrigin = "Anonymous";
             overlay.onload = () => {
               ctx.drawImage(overlay, x, y, iconSize, iconSize);
-              const resultImg = document.createElement('img');
-              resultImg.src = canvas.toDataURL('image/png');
-              document.getElementById('result').appendChild(resultImg);
-              lastResultCanvas = canvas;
+              finishResult(canvas);
             };
             overlay.onerror = () => {
-              const resultImg = document.createElement('img');
-              resultImg.src = canvas.toDataURL('image/png');
-              document.getElementById('result').appendChild(resultImg);
-              lastResultCanvas = canvas;
+              finishResult(canvas);
             };
 
             if (userImage) {
@@ -316,10 +312,17 @@
               overlay.src = 'https://via.placeholder.com/80';
             }
           }
-        }, 100);
+        }, 150);
 
-        setTimeout(() => clearInterval(checkQR), 3000);
+        setTimeout(() => clearInterval(checkQR), 4000);
       }
+    }
+
+    function finishResult(canvas) {
+      const resultImg = document.createElement('img');
+      resultImg.src = canvas.toDataURL('image/png');
+      document.getElementById('result').appendChild(resultImg);
+      lastResultCanvas = canvas;
     }
 
     function waitForImageAndSave(container, w, h) {
@@ -334,8 +337,8 @@
           ctx.drawImage(img, 0, 0);
           lastResultCanvas = canvas;
         }
-      }, 100);
-      setTimeout(() => clearInterval(check), 3000);
+      }, 150);
+      setTimeout(() => clearInterval(check), 4000);
     }
 
     function downloadResult() {
