@@ -179,7 +179,7 @@
     </div>
 
     <!-- Контейнер для рендера QR вне видимой области -->
-    <div id="qrTempContainer" style="position:absolute; left:-9999px;"></div>
+    <div id="qrTempContainer" style="position:absolute; left:-9999px; top:-9999px;"></div>
 
     <div id="result"></div>
 
@@ -233,7 +233,7 @@
 
     function generate() {
       const btn = document.getElementById('genBtn');
-      btn.classList.add('active'); // показываем нажатие
+      btn.classList.add('active');
       
       const text = document.getElementById('inputText').value.trim();
       if (!text) {
@@ -315,9 +315,9 @@
               overlay.src = 'https://via.placeholder.com/80';
             }
           }
-        }, 150);
+        }, 200);
 
-        setTimeout(() => clearInterval(checkQR), 4000);
+        setTimeout(() => clearInterval(checkQR), 5000);
       }
     }
 
@@ -342,8 +342,8 @@
           lastResultCanvas = canvas;
           if (btn) btn.classList.remove('active');
         }
-      }, 150);
-      setTimeout(() => clearInterval(check), 4000);
+      }, 200);
+      setTimeout(() => clearInterval(check), 5000);
     }
 
     function downloadResult() {
