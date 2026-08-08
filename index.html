@@ -5,41 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Генератор QR и штрихкодов</title>
   <style>
+    :root {
+      --bg: #1e1e1e;
+      --panel: #2b2b2b;
+      --text: #e0e0e0;
+      --accent: #4caf50;
+      --accent-hover: #388e3c;
+      --border: #333;
+      --input-bg: #373737;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      padding: 10px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
       margin: 0;
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: var(--panel);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
     }
     h1 {
       text-align: center;
-      font-size: 1.4rem;
-      margin-bottom: 15px;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
     }
     .controls {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
       margin-bottom: 20px;
     }
     input[type="text"] {
       width: 100%;
       padding: 12px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
       border-radius: 6px;
-      box-sizing: border-box;
+      background: var(--input-bg);
+      color: white;
       font-size: 1rem;
+      box-sizing: border-box;
     }
     button {
-      padding: 12px 18px;
+      padding: 12px 20px;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -47,78 +60,41 @@
       transition: background 0.2s;
     }
     .btn-generate {
-      background: #28a745;
+      background: var(--accent);
       color: white;
     }
     .btn-generate:hover, .btn-generate.active {
-      background: #218838;
+      background: var(--accent-hover);
     }
 
     .mode-buttons {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 8px;
-      margin-bottom: 18px;
+      gap: 10px;
+      margin-bottom: 20px;
     }
     .mode-buttons button {
-      background: #e9ecef;
-      color: #333;
+      background: #3c3c3c;
+      color: var(--text);
       flex: 1 1 auto;
       min-width: 130px;
     }
     .mode-buttons button.active {
-      background: #007bff;
+      background: #555;
       color: white;
     }
 
     #result {
       text-align: center;
       margin-top: 20px;
-      position: relative;
     }
-
-    /* Индикатор загрузки */
-    .loader {
-      display: none;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    /* Контейнер для наложения логотипа */
-    .qr-with-logo-wrapper {
-      position: relative;
-      display: inline-block;
-      margin: 0 auto;
-    }
-    .qr-base-img {
-      display: block;
-      max-width: 100%;
-    }
-    .overlay-logo {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      pointer-events: none;
-      z-index: 10;
-      display: block;
-    }
-
     canvas {
       max-width: 100%;
       height: auto;
       display: block;
       margin: 10px auto;
+      image-rendering: pixelated; /* чтобы QR был чётким */
     }
 
     .upload-section {
@@ -126,18 +102,16 @@
       margin-bottom: 18px;
       text-align: left;
     }
-    
     .upload-wrapper {
       display: flex;
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
     }
-
     .upload-label {
       display: inline-block;
       padding: 10px 16px;
-      background: #e9ecef;
+      background: #3c3c3c;
       border-radius: 6px;
       font-weight: 500;
       cursor: pointer;
@@ -145,12 +119,11 @@
     .upload-input {
       display: none;
     }
-
     .upload-status {
       margin-left: 12px;
       padding: 6px 12px;
-      background: #d4edda;
-      color: #155724;
+      background: #2a5f30;
+      color: #a5d6a7;
       border-radius: 4px;
       font-size: 0.9rem;
       white-space: nowrap;
@@ -162,11 +135,11 @@
       text-align: center;
     }
     .btn-download {
-      background: #6c757d;
+      background: #555;
       color: white;
     }
     .btn-download:hover {
-      background: #545c64;
+      background: #777;
     }
 
     @media (max-width: 480px) {
@@ -213,6 +186,7 @@
   <script>
     let currentMode = 1;
     let userImage = null;
+    let lastCanvas = null; // канвас с готовым QR+логотип для скачивания и показа
 
     function setMode(mode) {
       currentMode = mode;
@@ -233,6 +207,7 @@
         status.textContent = '';
       }
       document.getElementById('result').innerHTML = '';
+      lastCanvas = null;
     }
 
     document.getElementById('imageInput').addEventListener('change', function(e) {
@@ -260,34 +235,25 @@
         return;
       }
 
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = '';
+      document.getElementById('result').innerHTML = '';
+      lastCanvas = null;
 
       try {
         if (currentMode === 1) {
-          const container = document.createElement('div');
-          container.id = 'qr-container-1';
-          resultDiv.appendChild(container);
-          new QRCode(container, { text, width: 256, height: 256 });
-          waitForImg(container, false);
+          // Обычный QR: сразу рисуем на канвасе через QRCodeJS
+          drawQrOnCanvas(text, false);
         } 
         else if (currentMode === 2) {
-          const canvas = document.createElement('canvas');
-          canvas.width = 300;
-          canvas.height = 120;
-          resultDiv.appendChild(canvas);
-
-          JsBarcode(canvas, text, {
-            format: "CODE128",
-            displayValue: true,
-            fontSize: 14,
-            textAlign: "center",
-            fontOptions: "bold"
-          });
-          btn.classList.remove('active');
+          // Штрихкод: рисуем на канвасе
+          drawBarcodeOnCanvas(text);
         } 
         else if (currentMode === 3) {
-          generateQrWithLogo(text);
+          if (!userImage) {
+            alert('Загрузите картинку для центра QR');
+            btn.classList.remove('active');
+            return;
+          }
+          drawQrOnCanvas(text, true);
         }
       } catch (e) {
         console.error(e);
@@ -296,107 +262,82 @@
       }
     }
 
-    // Показываем лоадер, ждём появления img
-    function waitForImg(container, hasLogo) {
-      const loader = document.createElement('div');
-      loader.className = 'loader';
-      document.getElementById('result').appendChild(loader);
+    // Рисуем QR на канвасе (свой, не из библиотеки в DOM)
+    function drawQrOnCanvas(text, withLogo) {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
 
-      let attempts = 0;
-      const interval = setInterval(() => {
-        attempts++;
-        const img = container.querySelector('img');
-        if (img && img.naturalWidth && img.naturalHeight) {
-          clearInterval(interval);
-          loader.style.display = 'none';
-          if (hasLogo && userImage) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'qr-with-logo-wrapper';
-            wrapper.appendChild(img.cloneNode());
-            
-            const logo = document.createElement('img');
+      // Генерируем QR во временный контейнер, чтобы получить dataURL
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      document.body.appendChild(tempContainer);
+
+      const qr = new QRCode(tempContainer, {
+        text: text,
+        width: 256,
+        height: 256
+      });
+
+      // Ждём появления img
+      const check = setInterval(() => {
+        const img = tempContainer.querySelector('img');
+        if (img && img.naturalWidth) {
+          clearInterval(check);
+          document.body.removeChild(tempContainer);
+          ctx.drawImage(img, 0, 0);
+
+          if (withLogo && userImage) {
+            const logo = new Image();
+            logo.onload = () => {
+              const size = 80;
+              const x = (c.width - size) / 2;
+              const y = (c.height - size) / 2;
+              ctx.drawImage(logo, x, y, size, size);
+              finishRender(c);
+            };
+            logo.onerror = () => finishRender(c);
             logo.src = userImage;
-            logo.className = 'overlay-logo';
-            wrapper.appendChild(logo);
-            
-            document.getElementById('result').replaceChild(wrapper, container);
           } else {
-            // Просто оставляем img на месте
-            document.getElementById('result').replaceChild(img, container);
+            finishRender(c);
           }
-          document.getElementById('genBtn').classList.remove('active');
-        } else if (attempts > 100) { // ~10 секунд
-          clearInterval(interval);
-          loader.style.display = 'none';
-          document.getElementById('genBtn').classList.remove('active');
-          alert('Не удалось сгенерировать QR (таймаут). Попробуйте ещё раз или уменьшите размер логотипа.');
         }
-      }, 100);
+      }, 50);
     }
 
-    function generateQrWithLogo(text) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'qr-with-logo-wrapper';
+    function drawBarcodeOnCanvas(text) {
+      const c = document.createElement('canvas');
+      c.width = 300;
+      c.height = 120;
+      const ctx = c.getContext('2d');
+      JsBarcode(c, text, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 14,
+        textAlign: "center",
+        fontOptions: "bold"
+      });
+      finishRender(c);
+    }
 
-      const container = document.createElement('div');
-      container.style.width = '256px';
-      container.style.height = '256px';
-      wrapper.appendChild(container);
-
-      new QRCode(container, { text, width: 256, height: 256 });
-
-      document.getElementById('result').appendChild(wrapper);
-      waitForImg(container, true);
+    function finishRender(canvas) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '';
+      resultDiv.appendChild(canvas);
+      lastCanvas = canvas;
+      document.getElementById('genBtn').classList.remove('active');
     }
 
     function downloadResult() {
-      // Ищем QR-картинку на экране
-      const qrImg = document.querySelector('.qr-base-img, .qr-with-logo-wrapper img:not(.overlay-logo)');
-      if (!qrImg) {
-        // Если это обычный QR из QRCodeJS — ищем img внутри контейнера
-        const container = document.querySelector('#qr-container-1, .qr-with-logo-wrapper > div');
-        if (container) {
-          const img = container.querySelector('img');
-          if (!img || !img.naturalWidth) {
-            alert('QR ещё не готов к скачиванию');
-            return;
-          }
-          prepareAndDownload(img);
-          return;
-        }
+      if (!lastCanvas) {
         alert('Сначала сгенерируйте код');
         return;
       }
-      prepareAndDownload(qrImg);
-    }
-
-    function prepareAndDownload(qrImg) {
-      const c = document.createElement('canvas');
-      c.width = qrImg.width || 256;
-      c.height = qrImg.height || 256;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(qrImg, 0, 0);
-
-      if (userImage) {
-        const overlay = new Image();
-        overlay.onload = () => {
-          const size = 80;
-          const x = (c.width - size) / 2;
-          const y = (c.height - size) / 2;
-          ctx.drawImage(overlay, x, y, size, size);
-          triggerDownload(c);
-        };
-        overlay.onerror = () => triggerDownload(c);
-        overlay.src = userImage;
-      } else {
-        triggerDownload(c);
-      }
-    }
-
-    function triggerDownload(canvas) {
       const link = document.createElement('a');
       link.download = 'code.png';
-      link.href = canvas.toDataURL('image/png');
+      link.href = lastCanvas.toDataURL('image/png');
       link.click();
     }
 
