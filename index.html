@@ -78,13 +78,13 @@
       position: relative;
     }
 
-    /* Контейнер для QR с логотипом: QR внизу, логотип сверху */
+    /* Контейнер для наложения логотипа через CSS */
     .qr-with-logo-wrapper {
       position: relative;
       display: inline-block;
       margin: 0 auto;
     }
-    .qr-with-logo-img {
+    .qr-base-img {
       display: block;
       max-width: 100%;
     }
@@ -208,7 +208,7 @@
   <script>
     let currentMode = 1;
     let userImage = null;
-    let lastResultCanvas = null; // канвас для скачивания
+    let lastResultCanvas = null; // канвас только для скачивания
 
     function setMode(mode) {
       currentMode = mode;
@@ -262,7 +262,6 @@
 
       try {
         if (currentMode === 1) {
-          // Обычный QR
           const container = document.createElement('div');
           container.id = 'qr-container-1';
           document.getElementById('result').appendChild(container);
@@ -271,11 +270,9 @@
             width: 256,
             height: 256
           });
-          // Для скачивания: ждём, когда появится img, и делаем канвас
           waitForImgAndPrepareCanvas(container, false);
         } 
         else if (currentMode === 2) {
-          // Штрихкод
           const canvas = document.createElement('canvas');
           canvas.width = 300;
           canvas.height = 120;
@@ -293,8 +290,7 @@
           btn.classList.remove('active');
         } 
         else if (currentMode === 3) {
-          // QR с логотипом (стабильно)
-          createQrWithLogoStable(text);
+          generateQrWithLogoStable(text);
         }
       } catch (e) {
         console.error(e);
@@ -303,65 +299,82 @@
       }
     }
 
-    // Самый надёжный способ: создаём свой img с QR через QRCode.createImageTag,
-    // кладём его, поверх него — логотип через CSS
-    function createQrWithLogoStable(text) {
+    // Стабильная генерация QR с логотипом:
+    // 1. Создаём QR в контейнере.
+    // 2. Ждём img внутри.
+    // 3. Показываем img как основу, поверх — логотип через CSS.
+    // 4. Отдельно готовим канвас для скачивания (QR + логотип).
+    function generateQrWithLogoStable(text) {
       const wrapper = document.createElement('div');
       wrapper.className = 'qr-with-logo-wrapper';
 
-      // Создаём картинку QR вручную, чтобы точно контролировать момент появления
-      const qrImg = document.createElement('img');
-      qrImg.className = 'qr-with-logo-img';
-      qrImg.width = 256;
-      qrImg.height = 256;
+      // Контейнер, в который библиотека сама вставит img
+      const container = document.createElement('div');
+      container.style.width = '256px';
+      container.style.height = '256px';
+      wrapper.appendChild(container);
 
-      // QRCodeJS: createImageTag возвращает готовый img.src в dataURL
-      const tag = QRCode.createImageTag(text, { width: 256, height: 256 });
-      // tag — это строка <img src="data:...">, нам нужен только src
-      const srcMatch = tag.match(/src=["']([^"']+)["']/);
-      if (srcMatch && srcMatch[1]) {
-        qrImg.src = srcMatch[1];
-      } else {
-        // fallback: если createImageTag вдруг не сработает, пробуем обычный QR
-        const container = document.createElement('div');
-        new QRCode(container, { text: text, width: 256, height: 256 });
-        wrapper.appendChild(container);
-      }
-
-      wrapper.appendChild(qrImg);
-
-      // Если есть логотип — добавляем его поверх
-      if (userImage) {
-        const logo = document.createElement('img');
-        logo.src = userImage;
-        logo.className = 'overlay-logo';
-        wrapper.appendChild(logo);
-      }
+      new QRCode(container, {
+        text: text,
+        width: 256,
+        height: 256
+      });
 
       document.getElementById('result').appendChild(wrapper);
 
-      // Для скачивания готовим канвас с QR + логотипом
-      prepareCanvasForDownload(qrImg, !!userImage);
-
-      const btn = document.getElementById('genBtn');
-      btn.classList.remove('active');
+      // Ждём появления img и готовим всё остальное
+      waitForImgAndPrepareCanvasWithLogo(wrapper, container, text);
     }
 
-    // Для обычного QR: ждём появления img и готовим канвас для скачивания (без логотипа)
+    // Для обычного QR: ждём img и готовим канвас без логотипа
     function waitForImgAndPrepareCanvas(container, hasLogo) {
-      const check = setInterval(() => {
+      checkImgReady(container, function(img) {
+        prepareCanvasForDownload(img, hasLogo);
+        const btn = document.getElementById('genBtn');
+        btn.classList.remove('active');
+      });
+    }
+
+    // Для QR с логотипом: ждём img, добавляем overlay-логотип в DOM, готовим канвас
+    function waitForImgAndPrepareCanvasWithLogo(wrapper, container, text) {
+      checkImgReady(container, function(img) {
+        // Добавляем логотип поверх QR (CSS-наложение)
+        if (userImage) {
+          const logo = document.createElement('img');
+          logo.src = userImage;
+          logo.className = 'overlay-logo';
+          wrapper.appendChild(logo);
+        }
+
+        // Готовим канвас для скачивания: QR + логотип
+        prepareCanvasForDownload(img, !!userImage);
+
+        const btn = document.getElementById('genBtn');
+        btn.classList.remove('active');
+      });
+    }
+
+    // Универсальный «ждём img» с надёжной проверкой
+    function checkImgReady(container, callback) {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
         const img = container.querySelector('img');
-        if (img && img.naturalWidth > 0) {
-          clearInterval(check);
-          prepareCanvasForDownload(img, hasLogo);
+        if (img && img.naturalWidth && img.naturalHeight) {
+          clearInterval(interval);
+          callback(img);
+        } else if (attempts > 30) { // ~3 секунды
+          clearInterval(interval);
+          console.error('Не удалось дождаться картинки QR');
           const btn = document.getElementById('genBtn');
           btn.classList.remove('active');
+          alert('Не удалось сгенерировать QR (таймаут)');
         }
       }, 100);
-      setTimeout(() => clearInterval(check), 3000);
     }
 
-    // Готовим канвас только для скачивания: туда рисуем QR, если нужно — сверху логотип
+    // Готовим отдельный канвас только для скачивания.
+    // Он не вставляется в DOM — поэтому CORS/tainted не ломают toDataURL.
     function prepareCanvasForDownload(qrImg, hasLogo) {
       const c = document.createElement('canvas');
       c.width = qrImg.width || 256;
@@ -379,7 +392,8 @@
           lastResultCanvas = c;
         };
         overlay.onerror = () => {
-          lastResultCanvas = c; // даже если лого не загрузилось — сохраняем QR
+          // Если картинка не загрузилась — сохраняем хотя бы QR
+          lastResultCanvas = c;
         };
         overlay.src = userImage;
       } else {
