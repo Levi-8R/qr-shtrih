@@ -9,10 +9,10 @@
       --bg: #121212;
       --surface: #1e1e1e;
       --text: #e0e0e0;
-      --accent: #bb86fc;       /* яркий акцентный цвет */
+      --accent: #bb86fc;
       --border: #333;
-      --download-bg: #bb86fc;  /* тот же цвет для кнопки скачивания */
-      --download-text: #000;
+      --disabled-bg: #444;
+      --disabled-text: #888;
     }
 
     body {
@@ -66,31 +66,24 @@
       border-radius: 6px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s;
     }
 
-    /* Основная кнопка генерации */
-    #generate-btn {
+    /* Активная кнопка */
+    .btn-active {
       background: var(--accent);
       color: #000;
+      box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
     }
-    #generate-btn:hover {
-      opacity: 0.9;
+    .btn-active:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
     }
 
-    /* Кнопка скачивания — теперь яркая и заметная */
-    #download-btn {
-      background: var(--download-bg);
-      color: var(--download-text);
-      box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3); /* лёгкая тень для объёма */
-    }
-    #download-btn:hover {
-      opacity: 0.9;
-      transform: translateY(-1px); /* лёгкий подъём при наведении */
-    }
-    #download-btn[disabled] {
-      background: #444;
-      color: #888;
+    /* Неактивная кнопка */
+    .btn-disabled {
+      background: var(--disabled-bg);
+      color: var(--disabled-text);
       box-shadow: none;
       cursor: not-allowed;
       transform: none;
@@ -116,14 +109,13 @@
       font-size: 0.9rem;
     }
 
-    .loading::after {
-      content: "Генерация...";
-      display: inline-block;
-      animation: pulse 1s infinite;
+    .image-status {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-top: 0.3rem;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    .image-status.loaded {
+      color: var(--accent);
     }
   </style>
 </head>
@@ -144,11 +136,10 @@
 
       <label for="image-input">Картинка для центра QR (для QR с картинкой):</label>
       <input type="file" id="image-input" accept="image/*" />
-      <div id="image-status" style="margin-top:0.3rem; font-size:0.85rem; color:#aaa;">Картинка не загружена</div>
+      <div id="image-status" class="image-status">Картинка не загружена</div>
 
-      <button id="generate-btn">Сгенерировать</button>
-      <!-- Кнопка скачивания теперь яркая и заметная -->
-      <button id="download-btn" disabled>Скачать результат</button>
+      <button id="generate-btn" class="btn-active">Сгенерировать</button>
+      <button id="download-btn" class="btn-disabled">Скачать результат</button>
     </div>
 
     <div id="preview-area">
@@ -172,19 +163,41 @@
     const imageStatus = document.getElementById('image-status');
 
     let loadedImage = null;
+    let hasResult = false; // флаг: есть ли сейчас валидный результат
+
+    // Сброс состояния (когда тип кода меняется, текст меняется, картинка сбрасывается)
+    function resetState() {
+      hasResult = false;
+      resultImg.style.display = 'none';
+      statusEl.textContent = '';
+      
+      generateBtn.classList.remove('btn-disabled');
+      generateBtn.classList.add('btn-active');
+
+      downloadBtn.classList.remove('btn-active');
+      downloadBtn.classList.add('btn-disabled');
+    }
+
+    typeSelect.addEventListener('change', resetState);
+    inputText.addEventListener('input', resetState);
 
     imageInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) {
         loadedImage = null;
         imageStatus.textContent = 'Картинка не загружена';
+        imageStatus.classList.remove('loaded');
+        resetState();
         return;
       }
       const reader = new FileReader();
       reader.onload = (event) => {
-        loadedImage = event.target.result; // data URL
+        loadedImage = event.target.result;
         const imgName = file.name;
         imageStatus.innerHTML = `Загружено: <strong>${imgName}</strong>`;
+        imageStatus.classList.add('loaded');
+        // Не сбрасываем результат сразу: если картинка новая, но результат был — он уже невалиден
+        resetState();
       };
       reader.readAsDataURL(file);
     });
@@ -198,10 +211,7 @@
         return;
       }
 
-      statusEl.textContent = '';
-      statusEl.className = 'status';
-      resultImg.style.display = 'none';
-      downloadBtn.disabled = true;
+      resetState(); // сначала сбрасываем, чтобы кнопки стали как «до генерации»
 
       if (type === 'code128') {
         generateCode128(text);
@@ -218,9 +228,16 @@
     });
 
     downloadBtn.addEventListener('click', () => {
+      if (!hasResult || !resultImg.src) return;
       const a = document.createElement('a');
       a.href = resultImg.src;
-      a.download = `code-${Date.now()}.png`;
+      const now = Date.now();
+      const type = typeSelect.value;
+      let filename = '';
+      if (type === 'code128') filename = `code128-${now}.png`;
+      else if (type === 'qr-image') filename = `qr-with-image-${now}.png`;
+      else filename = `qr-${now}.png`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -229,6 +246,17 @@
     function setStatus(msg, color = null) {
       statusEl.textContent = msg;
       if (color) statusEl.style.color = color;
+      else statusEl.style.color = '';
+    }
+
+    function finishGeneration() {
+      hasResult = true;
+      // Кнопки: генерация — неактивна, скачать — активна
+      generateBtn.classList.remove('btn-active');
+      generateBtn.classList.add('btn-disabled');
+
+      downloadBtn.classList.remove('btn-disabled');
+      downloadBtn.classList.add('btn-active');
     }
 
     // Code128
@@ -247,7 +275,7 @@
         resultImg.src = canvas.toDataURL('image/png');
         resultImg.onload = () => {
           resultImg.style.display = 'block';
-          downloadBtn.disabled = false;
+          finishGeneration();
           setStatus('Штрихкод Code128 готов');
         };
         resultImg.onerror = () => setStatus('Ошибка генерации штрихкода', '#ff6b6b');
@@ -299,7 +327,7 @@
       resultImg.src = canvas.toDataURL('image/png');
       resultImg.onload = () => {
         resultImg.style.display = 'block';
-        downloadBtn.disabled = false;
+        finishGeneration();
         setStatus('QR-код готов');
       };
       resultImg.onerror = () => setStatus('Ошибка сохранения QR-кода', '#ff6b6b');
