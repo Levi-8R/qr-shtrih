@@ -9,8 +9,10 @@
       --bg: #121212;
       --surface: #1e1e1e;
       --text: #e0e0e0;
-      --accent: #bb86fc;
+      --accent: #bb86fc;       /* яркий акцентный цвет */
       --border: #333;
+      --download-bg: #bb86fc;  /* тот же цвет для кнопки скачивания */
+      --download-text: #000;
     }
 
     body {
@@ -60,16 +62,38 @@
       margin-top: 1rem;
       width: 100%;
       padding: 0.8rem;
-      background: var(--accent);
-      color: #000;
       border: none;
       border-radius: 6px;
       font-weight: 600;
       cursor: pointer;
+      transition: opacity 0.2s;
     }
 
-    button:hover {
+    /* Основная кнопка генерации */
+    #generate-btn {
+      background: var(--accent);
+      color: #000;
+    }
+    #generate-btn:hover {
       opacity: 0.9;
+    }
+
+    /* Кнопка скачивания — теперь яркая и заметная */
+    #download-btn {
+      background: var(--download-bg);
+      color: var(--download-text);
+      box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3); /* лёгкая тень для объёма */
+    }
+    #download-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px); /* лёгкий подъём при наведении */
+    }
+    #download-btn[disabled] {
+      background: #444;
+      color: #888;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
     }
 
     #preview-area {
@@ -80,7 +104,7 @@
     img.result-image {
       max-width: 100%;
       height: auto;
-      display: none; /* скрываем, пока не сгенерирован */
+      display: none;
       border: 1px solid var(--border);
       border-radius: 8px;
     }
@@ -92,7 +116,6 @@
       font-size: 0.9rem;
     }
 
-    /* Индикация загрузки */
     .loading::after {
       content: "Генерация...";
       display: inline-block;
@@ -124,7 +147,8 @@
       <div id="image-status" style="margin-top:0.3rem; font-size:0.85rem; color:#aaa;">Картинка не загружена</div>
 
       <button id="generate-btn">Сгенерировать</button>
-      <button id="download-btn" disabled style="background:#444;">Скачать результат</button>
+      <!-- Кнопка скачивания теперь яркая и заметная -->
+      <button id="download-btn" disabled>Скачать результат</button>
     </div>
 
     <div id="preview-area">
@@ -210,7 +234,6 @@
     // Code128
     function generateCode128(data) {
       try {
-        // JsBarcode рисует на canvas, мы его конвертируем в img
         const canvas = document.createElement('canvas');
         JsBarcode(canvas, data, {
           format: 'CODE128',
@@ -237,24 +260,21 @@
     function generateQR(text, imageData) {
       try {
         const container = document.createElement('div');
-        // QRCode.js не умеет сам в dataURL, поэтому рисуем в DOM, потом копируем в canvas
         new QRCode(container, {
           text: text,
           width: 256,
           height: 256
         });
 
-        // Находим canvas внутри контейнера
         const qrCanvas = container.querySelector('canvas');
         if (!qrCanvas) throw new Error('Не удалось создать QR-код');
 
         if (imageData) {
-          // Накладываем картинку по центру
           const ctx = qrCanvas.getContext('2d');
           const img = new Image();
           img.src = imageData;
           img.onload = () => {
-            const size = 80; // размер картинки в центре
+            const size = 80;
             const x = (qrCanvas.width - size) / 2;
             const y = (qrCanvas.height - size) / 2;
             ctx.drawImage(img, x, y, size, size);
