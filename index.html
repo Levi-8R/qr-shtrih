@@ -1,321 +1,289 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор кодов</title>
-    <style>
-        :root {
-            --bg-color: #121212;
-            --panel-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-secondary: #aaaaaa;
-            --accent: #bb86fc;
-            --accent-hover: #9d5bcf;
-            --border: #333333;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Генератор кодов</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --text: #e0e0e0;
+      --accent: #bb86fc;
+      --border: #333;
+    }
 
-        body {
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 1rem;
-        }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+    }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            font-size: 1.4rem;
-        }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
 
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            justify-content: center;
-            margin-bottom: 1.2rem;
-        }
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
 
-        .tab-btn {
-            padding: 0.6rem 1rem;
-            background: #2c2c2c;
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-        }
+    .controls {
+      background: var(--surface);
+      padding: 1.25rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
 
-        .tab-btn.active {
-            background: var(--accent);
-            color: #000;
-            border-color: var(--accent);
-        }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: 500;
+    }
 
-        .panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            padding: 1.25rem;
-            border-radius: 8px;
-        }
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 0.6rem;
+      background: #2c2c2c;
+      color: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-top: 0.4rem;
+    }
 
-        label {
-            display: block;
-            margin-top: 1rem;
-            font-weight: 500;
-            margin-bottom: 0.3rem;
-        }
+    button {
+      margin-top: 1rem;
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
 
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 0.6rem;
-            background: #2c2c2c;
-            border: 1px solid var(--border);
-            color: white;
-            border-radius: 4px;
-        }
+    button:hover {
+      opacity: 0.9;
+    }
 
-        button.action {
-            margin-top: 1.2rem;
-            padding: 0.8rem 1.4rem;
-            background: var(--accent);
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            width: 100%;
-        }
+    #preview-area {
+      margin-top: 2rem;
+      text-align: center;
+    }
 
-        button.action:hover {
-            background: var(--accent-hover);
-        }
+    img.result-image {
+      max-width: 100%;
+      height: auto;
+      display: none; /* скрываем, пока не сгенерирован */
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
 
-        #preview-container {
-            margin-top: 1.5rem;
-            text-align: center;
-        }
+    .status {
+      margin-top: 0.75rem;
+      min-height: 1.2rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
 
-        img.result-image {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            display: none; /* скрываем, пока нет результата */
-        }
-
-        .status-msg {
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            text-align: left;
-        }
-
-        /* Статус загрузки фото */
-        #image-status {
-            margin-top: 0.4rem;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        @media (max-width: 480px) {
-            .controls { flex-direction: column; align-items: stretch; }
-            .tab-btn, .tab-btn.active { width: 100%; text-align: center; }
-            h1 { font-size: 1.2rem; }
-        }
-    </style>
+    /* Индикация загрузки */
+    .loading::after {
+      content: "Генерация...";
+      display: inline-block;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Генератор кодов</h1>
+  <div class="container">
+    <h1>Генератор кодов</h1>
 
-        <!-- Переключатель режимов -->
-        <div class="controls">
-            <button class="tab-btn active" onclick="setMode('qr')">QR-код</button>
-            <button class="tab-btn" onclick="setMode('barcode')">Штрихкод (Code128)</button>
-            <button class="tab-btn" onclick="setMode('qr-image')">QR с картинкой</button>
-        </div>
+    <div class="controls">
+      <label for="type-select">Тип кода:</label>
+      <select id="type-select">
+        <option value="qr">QR-код (обычный)</option>
+        <option value="qr-image">QR-код с картинкой по центру</option>
+        <option value="code128">Штрихкод Code 128</option>
+      </select>
 
-        <div class="panel">
-            <!-- QR-код -->
-            <div id="mode-qr" class="mode-content">
-                <label for="qr-text">Текст для QR-кода:</label>
-                <input type="text" id="qr-text" placeholder="Введите текст или URL">
-                <button class="action" onclick="generateQR()">Сгенерировать QR-код</button>
-                <div id="preview-container">
-                    <img id="qr-image" class="result-image" alt="QR-код">
-                    <button class="action" style="margin-top:0.8rem;" onclick="downloadImage('qr-image')">Скачать PNG</button>
-                </div>
-            </div>
+      <label for="input-text">Текст/ссылка:</label>
+      <input type="text" id="input-text" placeholder="Введите текст или URL" value="https://example.com" />
 
-            <!-- Штрихкод -->
-            <div id="mode-barcode" class="mode-content" style="display:none;">
-                <label for="barcode-text">Текст для штрихкода:</label>
-                <input type="text" id="barcode-text" placeholder="Только цифры/буквы без спецсимволов">
-                <button class="action" onclick="generateBarcode()">Сгенерировать штрихкод</button>
-                <div id="preview-container-barcode">
-                    <img id="barcode-image" class="result-image" alt="Штрихкод">
-                    <button class="action" style="margin-top:0.8rem;" onclick="downloadImage('barcode-image')">Скачать PNG</button>
-                </div>
-            </div>
+      <label for="image-input">Картинка для центра QR (для QR с картинкой):</label>
+      <input type="file" id="image-input" accept="image/*" />
+      <div id="image-status" style="margin-top:0.3rem; font-size:0.85rem; color:#aaa;">Картинка не загружена</div>
 
-            <!-- QR с картинкой -->
-            <div id="mode-qr-image" class="mode-content" style="display:none;">
-                <label for="qr-with-img-text">Текст для QR:</label>
-                <input type="text" id="qr-with-img-text" placeholder="Текст или URL">
-
-                <label for="center-image">Картинка в центр QR:</label>
-                <input type="file" id="center-image" accept="image/*">
-                <div id="image-status"></div>
-
-                <button class="action" onclick="generateQRWithImage()">Сгенерировать QR с картинкой</button>
-
-                <div id="preview-container-qr-image">
-                    <img id="qr-with-image" class="result-image" alt="QR с картинкой">
-                    <button class="action" style="margin-top:0.8rem;" onclick="downloadImage('qr-with-image')">Скачать PNG</button>
-                </div>
-            </div>
-        </div>
+      <button id="generate-btn">Сгенерировать</button>
+      <button id="download-btn" disabled style="background:#444;">Скачать результат</button>
     </div>
 
-    <!-- Библиотеки -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <div id="preview-area">
+      <img id="result-img" class="result-image" alt="Результат" />
+      <div class="status" id="status"></div>
+    </div>
+  </div>
 
-    <script>
-        let loadedImage = null;
+  <!-- Библиотеки -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
-        // Переключение режимов
-        function setMode(mode) {
-            document.querySelectorAll('.mode-content').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  <script>
+    const typeSelect = document.getElementById('type-select');
+    const inputText = document.getElementById('input-text');
+    const imageInput = document.getElementById('image-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const resultImg = document.getElementById('result-img');
+    const statusEl = document.getElementById('status');
+    const imageStatus = document.getElementById('image-status');
 
-            if (mode === 'qr') {
-                document.getElementById('mode-qr').style.display = 'block';
-                document.querySelector('.controls .tab-btn:nth-child(1)').classList.add('active');
-            } else if (mode === 'barcode') {
-                document.getElementById('mode-barcode').style.display = 'block';
-                document.querySelector('.controls .tab-btn:nth-child(2)').classList.add('active');
-            } else if (mode === 'qr-image') {
-                document.getElementById('mode-qr-image').style.display = 'block';
-                document.querySelector('.controls .tab-btn:nth-child(3)').classList.add('active');
-            }
+    let loadedImage = null;
 
-            // Скрываем старые картинки при переключении
-            document.querySelectorAll('.result-image').forEach(img => {
-                img.style.display = 'none';
-                img.src = '';
-            });
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        loadedImage = null;
+        imageStatus.textContent = 'Картинка не загружена';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        loadedImage = event.target.result; // data URL
+        const imgName = file.name;
+        imageStatus.innerHTML = `Загружено: <strong>${imgName}</strong>`;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    generateBtn.addEventListener('click', () => {
+      const type = typeSelect.value;
+      const text = inputText.value.trim();
+      if (!text) {
+        statusEl.textContent = 'Введите текст или ссылку';
+        statusEl.style.color = '#ff6b6b';
+        return;
+      }
+
+      statusEl.textContent = '';
+      statusEl.className = 'status';
+      resultImg.style.display = 'none';
+      downloadBtn.disabled = true;
+
+      if (type === 'code128') {
+        generateCode128(text);
+      } else if (type === 'qr') {
+        generateQR(text, null);
+      } else if (type === 'qr-image') {
+        if (!loadedImage) {
+          statusEl.textContent = 'Загрузите картинку для центра QR-кода';
+          statusEl.style.color = '#ff6b6b';
+          return;
         }
+        generateQRWithImage(text, loadedImage);
+      }
+    });
 
-        // Обработка загрузки картинки
-        document.getElementById('center-image').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const status = document.getElementById('image-status');
-            if (!file) {
-                loadedImage = null;
-                status.textContent = '';
-                return;
-            }
+    downloadBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = resultImg.src;
+      a.download = `code-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                loadedImage = event.target.result; // base64
-                status.textContent = 'Загружено: ' + file.name;
-            };
-            reader.readAsDataURL(file);
+    function setStatus(msg, color = null) {
+      statusEl.textContent = msg;
+      if (color) statusEl.style.color = color;
+    }
+
+    // Code128
+    function generateCode128(data) {
+      try {
+        // JsBarcode рисует на canvas, мы его конвертируем в img
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, data, {
+          format: 'CODE128',
+          displayValue: true,
+          width: 2,
+          height: 50,
+          fontSize: 14,
+          lineColor: '#ffffff',
+          background: '#000000'
+        });
+        resultImg.src = canvas.toDataURL('image/png');
+        resultImg.onload = () => {
+          resultImg.style.display = 'block';
+          downloadBtn.disabled = false;
+          setStatus('Штрихкод Code128 готов');
+        };
+        resultImg.onerror = () => setStatus('Ошибка генерации штрихкода', '#ff6b6b');
+      } catch (e) {
+        setStatus('Ошибка при генерации штрихкода: ' + e.message, '#ff6b6b');
+      }
+    }
+
+    // Обычный QR
+    function generateQR(text, imageData) {
+      try {
+        const container = document.createElement('div');
+        // QRCode.js не умеет сам в dataURL, поэтому рисуем в DOM, потом копируем в canvas
+        new QRCode(container, {
+          text: text,
+          width: 256,
+          height: 256
         });
 
-        function showImage(imgId, dataUrl) {
-            const img = document.getElementById(imgId);
-            img.src = dataUrl;
-            img.style.display = 'block';
+        // Находим canvas внутри контейнера
+        const qrCanvas = container.querySelector('canvas');
+        if (!qrCanvas) throw new Error('Не удалось создать QR-код');
+
+        if (imageData) {
+          // Накладываем картинку по центру
+          const ctx = qrCanvas.getContext('2d');
+          const img = new Image();
+          img.src = imageData;
+          img.onload = () => {
+            const size = 80; // размер картинки в центре
+            const x = (qrCanvas.width - size) / 2;
+            const y = (qrCanvas.height - size) / 2;
+            ctx.drawImage(img, x, y, size, size);
+            finishQR(qrCanvas);
+          };
+          img.onerror = () => {
+            setStatus('Ошибка загрузки картинки для QR', '#ff6b6b');
+          };
+        } else {
+          finishQR(qrCanvas);
         }
+      } catch (e) {
+        setStatus('Ошибка при генерации QR-кода: ' + e.message, '#ff6b6b');
+      }
+    }
 
-        function downloadImage(imgId) {
-            const img = document.getElementById(imgId);
-            if (!img.src) return;
-            const link = document.createElement('a');
-            link.download = 'code.png';
-            link.href = img.src;
-            link.click();
-        }
+    function generateQRWithImage(text, imageData) {
+      generateQR(text, imageData);
+    }
 
-        function generateQR() {
-            const text = document.getElementById('qr-text').value.trim();
-            if (!text) {
-                alert('Введите текст для QR-кода');
-                return;
-            }
-            const container = document.createElement('div');
-            const qr = new QRCode(container, {
-                text: text,
-                width: 256,
-                height: 256
-            });
-            const canvas = qr.canvas;
-            showImage('qr-image', canvas.toDataURL('image/png'));
-        }
-
-        function generateBarcode() {
-            const text = document.getElementById('barcode-text').value.trim();
-            if (!text) {
-                alert('Введите текст для штрихкода');
-                return;
-            }
-            const target = document.getElementById('barcode-image');
-            // Очищаем старые элементы, чтобы JsBarcode мог создать свой canvas
-            target.parentElement.querySelectorAll('canvas').forEach(c => c.remove());
-            JsBarcode(target, text, {
-                format: "CODE128",
-                displayValue: true,
-                fontSize: 14,
-                width: 2,
-                height: 50
-            });
-
-            // После отрисовки JsBarcode рисует в canvas рядом с img — берём его
-            const barcodeCanvas = target.parentElement.querySelector('canvas');
-            if (barcodeCanvas) {
-                showImage('barcode-image', barcodeCanvas.toDataURL('image/png'));
-            }
-        }
-
-        async function generateQRWithImage() {
-            const text = document.getElementById('qr-with-img-text').value.trim();
-            if (!text) {
-                alert('Введите текст для QR-кода');
-                return;
-            }
-            if (!loadedImage) {
-                alert('Загрузите картинку для центра QR-кода');
-                return;
-            }
-
-            const container = document.createElement('div');
-            const qr = new QRCode(container, {
-                text: text,
-                width: 256,
-                height: 256
-            });
-            const canvas = qr.canvas;
-            const ctx = canvas.getContext('2d');
-
-            const img = new Image();
-            img.src = loadedImage;
-            img.onload = () => {
-                const size = 80; // размер картинки в центре
-                const offset = (256 - size) / 2;
-                ctx.drawImage(img, offset, offset, size, size);
-
-                showImage('qr-with-image', canvas.toDataURL('image/png'));
-            };
-        }
-    </script>
+    function finishQR(canvas) {
+      resultImg.src = canvas.toDataURL('image/png');
+      resultImg.onload = () => {
+        resultImg.style.display = 'block';
+        downloadBtn.disabled = false;
+        setStatus('QR-код готов');
+      };
+      resultImg.onerror = () => setStatus('Ошибка сохранения QR-кода', '#ff6b6b');
+    }
+  </script>
 </body>
 </html>
