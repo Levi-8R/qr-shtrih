@@ -276,7 +276,7 @@
         resultImg.onload = () => {
           resultImg.style.display = 'block';
           finishGeneration();
-          setStatus('Штрихкод Code128 готов');
+          setStatus('Штрихкод готов');
         };
         resultImg.onerror = () => setStatus('Ошибка генерации штрихкода', '#ff6b6b');
       } catch (e) {
